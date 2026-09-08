@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dora Dora - Streaming App</title>
+    <title>Dora Dora - Cloud Streaming App</title>
+    
+    <!-- Firebase SDK Scripts (Realtime Database & App) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
     <style>
         * {
             box-sizing: border-box;
@@ -336,7 +341,7 @@
             z-index: 5;
         }
 
-        /* VIDEO PLAYER MODAL (No Download, Custom Expand & Quality Bar) */
+        /* VIDEO PLAYER MODAL */
         .video-modal {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
@@ -359,11 +364,7 @@
             background: #000;
         }
 
-        /* Hides native download menu in standard video controls */
         .video-modal video::-webkit-media-controls-download-button {
-            display: none !important;
-        }
-        .video-modal video::-internal-media-controls-overflow-button {
             display: none !important;
         }
 
@@ -438,7 +439,7 @@
             <button class="btn-full" onclick="handleLogin()">Sign In</button>
         </div>
 
-        <!-- USER HOME SCREEN (Available Shows List) -->
+        <!-- USER HOME SCREEN -->
         <div id="homeScreen" class="screen">
             <div class="home-header">
                 <div class="home-logo">DORA DORA</div>
@@ -453,7 +454,7 @@
             </div>
         </div>
 
-        <!-- USER SHOW DETAILS SCREEN (Scrollable Episodes List) -->
+        <!-- USER SHOW DETAILS SCREEN -->
         <div id="detailScreen" class="screen" style="position: relative;">
             <div class="back-nav-bar">
                 <button class="back-btn" onclick="switchScreen('homeScreen')">‹ Shows</button>
@@ -465,10 +466,10 @@
             </div>
         </div>
 
-        <!-- ADMIN PANEL HOME (Shows List + Add Button) -->
+        <!-- ADMIN PANEL HOME -->
         <div id="adminScreen" class="screen admin-screen">
             <div class="admin-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #222; padding-bottom:10px;">
-                <h2 style="font-size:16px; color:#ff0000;">Admin Dashboard</h2>
+                <h2 style="font-size:16px; color:#ff0000;">Admin Dashboard (Cloud Live)</h2>
                 <div style="display:flex; gap:6px;">
                     <button class="icon-btn" onclick="switchScreen('homeScreen')">Home</button>
                     <button class="icon-btn" onclick="handleLogout()">Logout</button>
@@ -490,7 +491,7 @@
             <div class="form-group"><label>Show Name</label><input type="text" id="newShowName" placeholder="e.g. Rajgad"></div>
             <div class="form-group"><label>Description</label><textarea id="newShowDesc" rows="3" placeholder="Overview..."></textarea></div>
             <div class="form-group"><label>Banner Image (From Gallery)</label><input type="file" id="newShowImgFile" accept="image/*"></div>
-            <button class="btn-full" onclick="addNewShow()">Save Show</button>
+            <button class="btn-full" onclick="addNewShow()">Save to Cloud</button>
         </div>
 
         <!-- SUB-PAGE: SHOW EPISODES MANAGEMENT -->
@@ -510,20 +511,20 @@
                 <span id="editEpPageHeading" style="font-size:13px; font-weight:bold; color:#ff0000;">Edit Episode</span>
                 <div style="width:40px;"></div>
             </div>
-            <input type="hidden" id="editingShowIdx">
+            <input type="hidden" id="editingShowKey">
             <input type="hidden" id="editingEpIdx">
             <div class="form-group"><label>Episode Title</label><input type="text" id="epFormTitle" placeholder="e.g. EPISODE 1"></div>
             <div class="form-group"><label>Description</label><textarea id="epFormDesc" rows="2" placeholder="Description..."></textarea></div>
             <div class="form-group"><label>Duration</label><input type="text" id="epFormDuration" value="15:00"></div>
             <div class="form-group"><label>Video Link (.mp4 / Archive / YouTube)</label><input type="text" id="epFormVideo" placeholder="Paste link here"></div>
             <div class="form-group"><label>Change Thumbnail (Optional)</label><input type="file" id="epFormThumbFile" accept="image/*"></div>
-            <button class="btn-full" onclick="saveEpisodeData()">Save Episode</button>
+            <button class="btn-full" onclick="saveEpisodeData()">Save to Cloud</button>
             <button class="btn-full" id="deleteEpBtn" style="background:#8b0000; margin-top:10px;" onclick="deleteCurrentEpisode()">Delete Episode</button>
         </div>
 
     </div>
 
-    <!-- VIDEO PLAYER MODAL (Expand/Fullscreen & Quality Adjuster, No Download) -->
+    <!-- VIDEO PLAYER MODAL -->
     <div class="video-modal" id="videoModal">
         <div class="player-toolbar">
             <div class="now-playing-title" id="playerTitle">Now Playing</div>
@@ -548,35 +549,35 @@
     </div>
 
     <script>
-        const defaultDatabase = [
-            {
-                id: 1,
-                name: "RAJGAD",
-                desc: "Witness the epic journey of the great Maratha warrior.",
-                heroImg: "https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?auto=format&fit=crop&q=80&w=800",
-                episodes: [
-                    { title: "EPISODE 1: The Oath", desc: "Shivaji Maharaj forms his council.", thumb: "https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?auto=format&fit=crop&q=80&w=800", video: "https://www.w3schools.com/html/mov_bbb.mp4", duration: "12:45" }
-                ]
-            }
-        ];
+        // ==========================================
+        // FIREBASE CONFIGURATION (Realtime DB)
+        // ==========================================
+        const firebaseConfig = {
+            databaseURL: "https://dora-dora-2e0e6-default-rtdb.asia-southeast1.firebasedatabase.app"
+        };
 
-        let showsData = JSON.parse(localStorage.getItem('doradoraLocalShows')) || defaultDatabase;
+        firebase.initializeApp(firebaseConfig);
+        const rtdb = firebase.database();
+
+        let showsData = {}; // Object mapping Firebase push keys to show objects
         let currentUser = localStorage.getItem('doradoraUser') || null;
-        let currentActiveShowIdx = null;
+        let currentActiveShowKey = null;
 
         window.onload = function() {
+            // Listen live to Firebase Database changes
+            rtdb.ref('shows').on('value', (snapshot) => {
+                showsData = snapshot.val() || {};
+                if (currentUser) {
+                    setupUserSession(currentUser);
+                }
+            });
+
             if (currentUser) {
                 setupUserSession(currentUser);
             } else {
                 switchScreen('loginScreen');
             }
         };
-
-        function saveDb() {
-            localStorage.setItem('doradoraLocalShows', JSON.stringify(showsData));
-            renderUserShowsGrid();
-            renderAdminShowsList();
-        }
 
         function switchScreen(screenId) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -611,13 +612,21 @@
             switchScreen('loginScreen');
         }
 
-        // Render User Home: Available Shows List Grid
+        // Render User Home: Available Shows List Grid from Cloud
         function renderUserShowsGrid() {
             const container = document.getElementById('showsGridContainer');
             container.innerHTML = '';
-            showsData.forEach((show, idx) => {
+            
+            const keys = Object.keys(showsData);
+            if(keys.length === 0) {
+                container.innerHTML = '<p style="color:#777; font-size:12px;">No shows available on cloud yet.</p>';
+                return;
+            }
+
+            keys.forEach(key => {
+                const show = showsData[key];
                 container.innerHTML += `
-                    <div class="show-grid-card" onclick="openUserShowEpisodes(${idx})">
+                    <div class="show-grid-card" onclick="openUserShowEpisodes('${key}')">
                         <img src="${show.heroImg}" class="show-grid-img" alt="${show.name}">
                         <div class="show-grid-info">
                             <div class="show-grid-title">${show.name}</div>
@@ -629,16 +638,17 @@
         }
 
         // User Click on Show -> Show Scrollable Episodes List
-        function openUserShowEpisodes(showIdx) {
-            const show = showsData[showIdx];
+        function openUserShowEpisodes(showKey) {
+            const show = showsData[showKey];
             document.getElementById('navShowTitleHeader').innerText = show.name;
             const container = document.getElementById('detailEpisodesContainer');
             container.innerHTML = '';
 
-            if(!show.episodes || show.episodes.length === 0) {
+            const eps = show.episodes || [];
+            if(eps.length === 0) {
                 container.innerHTML = '<p style="color:#777; font-size:12px;">No episodes available.</p>';
             } else {
-                show.episodes.forEach(ep => {
+                eps.forEach(ep => {
                     container.innerHTML += `
                         <div class="yt-card" onclick="playEpisode('${ep.title}', '${ep.video}')">
                             <div class="yt-thumb-box">
@@ -658,14 +668,23 @@
             switchScreen('detailScreen');
         }
 
-        // Admin: Render Shows List
+        // Admin: Render Shows List from Cloud
         function renderAdminShowsList() {
             const container = document.getElementById('adminShowsList');
             container.innerHTML = '';
-            showsData.forEach((show, idx) => {
+            
+            const keys = Object.keys(showsData);
+            if(keys.length === 0) {
+                container.innerHTML = '<p style="color:#777; font-size:12px;">No shows found.</p>';
+                return;
+            }
+
+            keys.forEach(key => {
+                const show = showsData[key];
+                const epCount = show.episodes ? show.episodes.length : 0;
                 container.innerHTML += `
-                    <div class="admin-show-row" onclick="openAdminShowEpisodes(${idx})">
-                        <span><b>${show.name}</b> (${show.episodes ? show.episodes.length : 0} eps)</span>
+                    <div class="admin-show-row" onclick="openAdminShowEpisodes('${key}')">
+                        <span><b>${show.name}</b> (${epCount} eps)</span>
                         <span style="color:#aaa; font-size:11px;">Manage ›</span>
                     </div>
                 `;
@@ -724,24 +743,28 @@
         }
 
         function finalizeNewShow(name, desc, heroImg) {
-            showsData.push({
-                id: Date.now(),
+            const newShowRef = rtdb.ref('shows').push();
+            newShowRef.set({
                 name,
                 desc: desc || 'No description.',
                 heroImg,
                 episodes: [
                     { title: "EPISODE 1", desc: "Pilot episode", thumb: heroImg, video: "https://www.w3schools.com/html/mov_bbb.mp4", duration: "10:00" }
                 ]
+            }, (error) => {
+                if (error) {
+                    alert("Failed to save: " + error.message);
+                } else {
+                    closeAddShowPage();
+                    alert('Show successfully saved to Cloud!');
+                }
             });
-            saveDb();
-            closeAddShowPage();
-            alert('Show created successfully!');
         }
 
         // Open Admin Show Episodes Feed
-        function openAdminShowEpisodes(showIdx) {
-            currentActiveShowIdx = showIdx;
-            const show = showsData[showIdx];
+        function openAdminShowEpisodes(showKey) {
+            currentActiveShowKey = showKey;
+            const show = showsData[showKey];
             document.getElementById('adminShowPageTitle').innerText = show.name;
             renderAdminEpisodesFeed(show);
             document.getElementById('adminShowEpisodesPage').classList.add('active');
@@ -754,14 +777,15 @@
         function renderAdminEpisodesFeed(show) {
             const container = document.getElementById('adminEpisodesFeedContainer');
             container.innerHTML = '';
-            if(!show.episodes || show.episodes.length === 0) {
+            const eps = show.episodes || [];
+            if(eps.length === 0) {
                 container.innerHTML = '<p style="color:#777; font-size:12px;">No episodes found.</p>';
                 return;
             }
-            show.episodes.forEach((ep, epIdx) => {
+            eps.forEach((ep, epIdx) => {
                 container.innerHTML += `
                     <div class="yt-card">
-                        <button class="edit-ep-btn" onclick="openEditEpisodePage(${currentActiveShowIdx}, ${epIdx})">✏️ Edit</button>
+                        <button class="edit-ep-btn" onclick="openEditEpisodePage('${currentActiveShowKey}', ${epIdx})">✏️ Edit</button>
                         <div class="yt-thumb-box" onclick="playEpisode('${ep.title}', '${ep.video}')">
                             <img src="${ep.thumb || show.heroImg}" class="yt-thumb" alt="thumb">
                             <div class="yt-duration">${ep.duration}</div>
@@ -779,7 +803,7 @@
 
         function openAddEpisodePage() {
             document.getElementById('editEpPageHeading').innerText = "Add New Episode";
-            document.getElementById('editingShowIdx').value = currentActiveShowIdx;
+            document.getElementById('editingShowKey').value = currentActiveShowKey;
             document.getElementById('editingEpIdx').value = "";
             document.getElementById('epFormTitle').value = "";
             document.getElementById('epFormDesc').value = "";
@@ -790,10 +814,10 @@
             document.getElementById('editEpisodePage').classList.add('active');
         }
 
-        function openEditEpisodePage(showIdx, epIdx) {
-            const ep = showsData[showIdx].episodes[epIdx];
+        function openEditEpisodePage(showKey, epIdx) {
+            const ep = showsData[showKey].episodes[epIdx];
             document.getElementById('editEpPageHeading').innerText = "Edit Episode";
-            document.getElementById('editingShowIdx').value = showIdx;
+            document.getElementById('editingShowKey').value = showKey;
             document.getElementById('editingEpIdx').value = epIdx;
             document.getElementById('epFormTitle').value = ep.title;
             document.getElementById('epFormDesc').value = ep.desc || '';
@@ -809,7 +833,7 @@
         }
 
         function saveEpisodeData() {
-            const showIdx = document.getElementById('editingShowIdx').value;
+            const showKey = document.getElementById('editingShowKey').value;
             const epIdx = document.getElementById('editingEpIdx').value;
             const title = document.getElementById('epFormTitle').value.trim();
             const desc = document.getElementById('epFormDesc').value.trim();
@@ -819,51 +843,61 @@
 
             if(!title || !video) { alert('Title and video link are required.'); return; }
 
-            const show = showsData[showIdx];
-            if(!show.episodes) show.episodes = [];
+            const show = showsData[showKey];
+            let eps = show.episodes || [];
 
-            function updateData(thumbUrl) {
+            function updateCloud(thumbUrl) {
                 const epObj = {
                     title,
                     desc: desc || 'Description',
                     duration: duration || '15:00',
                     video,
-                    thumb: thumbUrl || (epIdx !== "" ? show.episodes[epIdx].thumb : show.heroImg)
+                    thumb: thumbUrl || (epIdx !== "" ? eps[epIdx].thumb : show.heroImg)
                 };
 
                 if(epIdx !== "") {
-                    show.episodes[epIdx] = epObj;
+                    eps[epIdx] = epObj;
                 } else {
-                    show.episodes.push(epObj);
+                    eps.push(epObj);
                 }
 
-                saveDb();
-                closeEditEpisodePage();
-                openAdminShowEpisodes(showIdx);
-                alert('Episode saved successfully!');
+                rtdb.ref('shows/' + showKey + '/episodes').set(eps, (error) => {
+                    if (error) {
+                        alert("Error saving: " + error.message);
+                    } else {
+                        closeEditEpisodePage();
+                        openAdminShowEpisodes(showKey);
+                        alert('Episode saved to Cloud successfully!');
+                    }
+                });
             }
 
             if (fileInput.files && fileInput.files[0]) {
                 compressImage(fileInput.files[0], function(compressedThumb) {
-                    updateData(compressedThumb);
+                    updateCloud(compressedThumb);
                 });
             } else {
-                updateData(null);
+                updateCloud(null);
             }
         }
 
         function deleteCurrentEpisode() {
             if(confirm("Delete this episode?")) {
-                const showIdx = document.getElementById('editingShowIdx').value;
+                const showKey = document.getElementById('editingShowKey').value;
                 const epIdx = document.getElementById('editingEpIdx').value;
-                showsData[showIdx].episodes.splice(epIdx, 1);
-                saveDb();
-                closeEditEpisodePage();
-                openAdminShowEpisodes(showIdx);
+                let eps = showsData[showKey].episodes || [];
+                eps.splice(epIdx, 1);
+
+                rtdb.ref('shows/' + showKey + '/episodes').set(eps, (error) => {
+                    if(!error) {
+                        closeEditEpisodePage();
+                        openAdminShowEpisodes(showKey);
+                    }
+                });
             }
         }
 
-        // VIDEO PLAYER (No download option, custom quality adjuster & fullscreen)
+        // VIDEO PLAYER
         const videoModal = document.getElementById('videoModal');
         const playerContainer = document.getElementById('playerContainer');
         const playerTitle = document.getElementById('playerTitle');
@@ -891,7 +925,7 @@
                 video.controls = true;
                 video.autoplay = true;
                 video.playsInline = true;
-                video.controlsList = "nodownload"; // Prevents download button in standard controls
+                video.controlsList = "nodownload";
                 video.src = videoUrl;
                 playerContainer.appendChild(video);
                 activeVideoElement = video;
@@ -909,15 +943,10 @@
 
         function changeVideoQuality(quality) {
             if(activeVideoElement) {
-                if(quality === "360") {
-                    activeVideoElement.style.maxHeight = "35vh";
-                } else if(quality === "480") {
-                    activeVideoElement.style.maxHeight = "48vh";
-                } else if(quality === "720") {
-                    activeVideoElement.style.maxHeight = "65vh";
-                } else {
-                    activeVideoElement.style.maxHeight = "100vh";
-                }
+                if(quality === "360") { activeVideoElement.style.maxHeight = "35vh"; }
+                else if(quality === "480") { activeVideoElement.style.maxHeight = "48vh"; }
+                else if(quality === "720") { activeVideoElement.style.maxHeight = "65vh"; }
+                else { activeVideoElement.style.maxHeight = "100vh"; }
             }
         }
 
