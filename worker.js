@@ -2,18 +2,15 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // Home / test route
+    // Home page
     if (url.pathname === "/") {
       return new Response("Lecture Bot API is running! 🚀");
     }
 
     // Telegram webhook
-    if (url.pathname === "/webhook") {
-      if (request.method !== "POST") {
-        return new Response("Method not allowed", { status: 405 });
-      }
+    if (url.pathname === "/webhook" && request.method === "POST") {
 
-      // Telegram secret token verify
+      // Verify Telegram webhook secret
       const secret = request.headers.get(
         "X-Telegram-Bot-Api-Secret-Token"
       );
@@ -23,27 +20,55 @@ export default {
       }
 
       const update = await request.json();
-      const message = update.message;
+
+      // Get message
+      const message =
+        update.message ||
+        update.channel_post;
 
       if (!message) {
         return new Response("OK");
       }
 
-      // Check for video or document
-      const file = message.video || message.document;
+      // Check for video
+      const video = message.video || message.document;
 
-      if (file) {
-        console.log("New lecture received!");
+      if (video) {
+        const fileId = video.file_id;
+        const fileName =
+          video.file_name ||
+          message.caption ||
+          "Lecture Video";
 
-        console.log({
-          file_id: file.file_id,
-          file_unique_id: file.file_unique_id,
-          file_name: file.file_name || "video.mp4",
-          caption: message.caption || "Untitled Lecture"
-        });
+        const caption = message.caption || "";
+
+        // Save lecture metadata to D1
+        await env.DB.prepare(`
+          INSERT INTO lectures
+          (file_id, title, caption, created_at)
+          VALUES (?, ?, ?, ?)
+        `)
+          .bind(
+            fileId,
+            fileName,
+            caption,
+            new Date().toISOString()
+          )
+          .run();
       }
 
       return new Response("OK");
+    }
+
+    // Get all lectures
+    if (url.pathname === "/lectures") {
+      const result = await env.DB.prepare(`
+        SELECT *
+        FROM lectures
+        ORDER BY id DESC
+      `).all();
+
+      return Response.json(result.results);
     }
 
     return new Response("Not Found", { status: 404 });
