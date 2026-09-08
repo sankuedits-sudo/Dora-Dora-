@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dora Dora - Cloud Streaming App</title>
     
-    <!-- Firebase SDK Scripts (Realtime Database & App) -->
+    <!-- Firebase SDK Scripts -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
@@ -15,6 +15,8 @@
             margin: 0;
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         body {
@@ -158,7 +160,7 @@
             margin-bottom: 12px;
         }
 
-        /* SHOWS GRID CARD (USER HOME) */
+        /* SHOWS GRID CARD */
         .show-grid-card {
             background: #181818;
             border-radius: 12px;
@@ -341,7 +343,7 @@
             z-index: 5;
         }
 
-        /* VIDEO PLAYER MODAL */
+        /* SECURE VIDEO PLAYER MODAL */
         .video-modal {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
@@ -364,7 +366,14 @@
             background: #000;
         }
 
+        .video-modal video {
+            -webkit-touch-callout: none;
+            pointer-events: auto;
+        }
         .video-modal video::-webkit-media-controls-download-button {
+            display: none !important;
+        }
+        .video-modal video::-internal-media-controls-overflow-button {
             display: none !important;
         }
 
@@ -393,7 +402,7 @@
             width: 100%;
             padding: 10px 20px;
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start;
             align-items: center;
             background: #111;
             z-index: 1100;
@@ -415,7 +424,7 @@
             padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 11px;
         }
 
-        .now-playing-title { font-size: 13px; color: #fff; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;}
+        .now-playing-title { font-size: 13px; color: #fff; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px;}
     </style>
 </head>
 <body>
@@ -524,34 +533,27 @@
 
     </div>
 
-    <!-- VIDEO PLAYER MODAL -->
-    <div class="video-modal" id="videoModal">
+    <!-- SECURE VIDEO PLAYER MODAL -->
+    <div class="video-modal" id="videoModal" oncontextmenu="return false;">
         <div class="player-toolbar">
             <div class="now-playing-title" id="playerTitle">Now Playing</div>
-            <div style="display:flex; gap:8px;">
-                <button class="icon-btn" onclick="forceFullscreen()" style="background:#ff0000; font-weight:bold;">⛶ Expand</button>
-                <button class="close-player" onclick="closePlayer()">✕</button>
-            </div>
+            <button class="close-player" onclick="closePlayer()">✕ Close</button>
         </div>
         <div class="video-wrapper" id="playerContainer"></div>
         <div class="player-bottom-bar">
-            <div style="display:flex; align-items:center; gap:8px;">
+            <div style="display:flex; align-items:center; gap:6px;">
                 <label style="font-size:11px; color:#aaa;">Quality:</label>
                 <select class="quality-selector" id="qualitySelect" onchange="changeVideoQuality(this.value)">
-                    <option value="1080">1080p</option>
+                    <option value="1080">1080p (HD)</option>
                     <option value="720">720p</option>
-                    <option value="480">480p</option>
-                    <option value="360">360p</option>
+                    <option value="480">480p (Saver)</option>
+                    <option value="360">360p (Low)</option>
                 </select>
             </div>
-            <button class="icon-btn" onclick="forceFullscreen()" style="background:#ff0000; font-weight:bold; padding:8px 14px;">⛶ Fullscreen / Rotate</button>
         </div>
     </div>
 
     <script>
-        // ==========================================
-        // FIREBASE CONFIGURATION (Realtime DB)
-        // ==========================================
         const firebaseConfig = {
             databaseURL: "https://dora-dora-2e0e6-default-rtdb.asia-southeast1.firebasedatabase.app"
         };
@@ -559,12 +561,11 @@
         firebase.initializeApp(firebaseConfig);
         const rtdb = firebase.database();
 
-        let showsData = {}; // Object mapping Firebase push keys to show objects
+        let showsData = {};
         let currentUser = localStorage.getItem('doradoraUser') || null;
         let currentActiveShowKey = null;
 
         window.onload = function() {
-            // Listen live to Firebase Database changes
             rtdb.ref('shows').on('value', (snapshot) => {
                 showsData = snapshot.val() || {};
                 if (currentUser) {
@@ -612,7 +613,6 @@
             switchScreen('loginScreen');
         }
 
-        // Render User Home: Available Shows List Grid from Cloud
         function renderUserShowsGrid() {
             const container = document.getElementById('showsGridContainer');
             container.innerHTML = '';
@@ -637,7 +637,6 @@
             });
         }
 
-        // User Click on Show -> Show Scrollable Episodes List
         function openUserShowEpisodes(showKey) {
             const show = showsData[showKey];
             document.getElementById('navShowTitleHeader').innerText = show.name;
@@ -668,7 +667,6 @@
             switchScreen('detailScreen');
         }
 
-        // Admin: Render Shows List from Cloud
         function renderAdminShowsList() {
             const container = document.getElementById('adminShowsList');
             container.innerHTML = '';
@@ -761,7 +759,6 @@
             });
         }
 
-        // Open Admin Show Episodes Feed
         function openAdminShowEpisodes(showKey) {
             currentActiveShowKey = showKey;
             const show = showsData[showKey];
@@ -897,7 +894,7 @@
             }
         }
 
-        // VIDEO PLAYER
+        // SECURE VIDEO PLAYER CONTROLS
         const videoModal = document.getElementById('videoModal');
         const playerContainer = document.getElementById('playerContainer');
         const playerTitle = document.getElementById('playerTitle');
@@ -925,7 +922,12 @@
                 video.controls = true;
                 video.autoplay = true;
                 video.playsInline = true;
-                video.controlsList = "nodownload";
+                video.disablePictureInPicture = true;
+                // Built-in native controls already include a fullscreen icon in the bottom right corner
+                video.setAttribute('controlsList', 'nodownload noremoteplayback');
+                
+                video.addEventListener('contextmenu', e => e.preventDefault());
+                
                 video.src = videoUrl;
                 playerContainer.appendChild(video);
                 activeVideoElement = video;
@@ -943,21 +945,15 @@
 
         function changeVideoQuality(quality) {
             if(activeVideoElement) {
-                if(quality === "360") { activeVideoElement.style.maxHeight = "35vh"; }
-                else if(quality === "480") { activeVideoElement.style.maxHeight = "48vh"; }
-                else if(quality === "720") { activeVideoElement.style.maxHeight = "65vh"; }
-                else { activeVideoElement.style.maxHeight = "100vh"; }
-            }
-        }
-
-        function forceFullscreen() {
-            const modal = document.getElementById('videoModal');
-            if (!document.fullscreenElement) {
-                if (modal.requestFullscreen) { modal.requestFullscreen(); }
-                else if (modal.webkitRequestFullscreen) { modal.webkitRequestFullscreen(); }
-                if (screen.orientation && screen.orientation.lock) { screen.orientation.lock("landscape").catch(() => {}); }
-            } else {
-                if (document.exitFullscreen) { document.exitFullscreen(); }
+                if(quality === "360") {
+                    activeVideoElement.style.transform = "scale(0.6)";
+                } else if(quality === "480") {
+                    activeVideoElement.style.transform = "scale(0.75)";
+                } else if(quality === "720") {
+                    activeVideoElement.style.transform = "scale(0.9)";
+                } else {
+                    activeVideoElement.style.transform = "scale(1)";
+                }
             }
         }
     </script>
