@@ -1,0 +1,5 @@
+{
+  "name": "lecture-bot-api",
+  "main": "worker.js",
+  "compatibility_date": "2026-09-08"
+}
