@@ -80,25 +80,25 @@
 
         .input-group {
             width: 100%;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
             text-align: left;
         }
 
         .input-group label {
             font-size: 11px;
             color: #aaa;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
             display: block;
         }
 
-        .input-group input {
+        .input-group input, .input-group textarea, .input-group select {
             width: 100%;
-            padding: 12px;
+            padding: 10px;
             background: #222;
             border: 1px solid #444;
             color: #fff;
-            border-radius: 8px;
-            font-size: 14px;
+            border-radius: 6px;
+            font-size: 12px;
         }
 
         .btn-full {
@@ -112,6 +112,26 @@
             background: #ff0000;
             color: #fff;
             margin-top: 10px;
+        }
+
+        /* SEARCH BAR */
+        .search-box {
+            padding: 10px 15px;
+            background: #0f0f0f;
+            position: sticky;
+            top: 57px;
+            z-index: 9;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 15px;
+            background: #181818;
+            border: 1px solid #333;
+            color: #fff;
+            border-radius: 20px;
+            font-size: 12px;
+            outline: none;
         }
 
         /* HEADERS & NAVIGATION */
@@ -267,7 +287,6 @@
             justify-content: space-between;
             align-items: center;
             border: 1px solid #333;
-            cursor: pointer;
         }
 
         .back-nav-bar {
@@ -307,27 +326,6 @@
             display: flex;
         }
 
-        .form-group {
-            margin-bottom: 12px;
-        }
-
-        .form-group label {
-            display: block;
-            font-size: 11px;
-            color: #aaa;
-            margin-bottom: 4px;
-        }
-
-        .form-group input, .form-group textarea, .form-group select {
-            width: 100%;
-            padding: 10px;
-            background: #222;
-            border: 1px solid #444;
-            color: #fff;
-            border-radius: 6px;
-            font-size: 12px;
-        }
-
         .edit-ep-btn {
             position: absolute;
             top: 10px;
@@ -343,7 +341,7 @@
             z-index: 5;
         }
 
-        /* SECURE VIDEO PLAYER MODAL */
+        /* CLEAN VIDEO PLAYER MODAL */
         .video-modal {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
@@ -386,21 +384,9 @@
             object-fit: contain;
         }
 
-        .player-toolbar {
-            position: absolute;
-            top: 10px; left: 15px; right: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 1100;
-            background: rgba(0,0,0,0.7);
-            padding: 8px 12px;
-            border-radius: 8px;
-        }
-
         .player-bottom-bar {
             width: 100%;
-            padding: 10px 20px;
+            padding: 12px 20px;
             display: flex;
             justify-content: flex-start;
             align-items: center;
@@ -418,13 +404,6 @@
             font-weight: bold;
             cursor: pointer;
         }
-
-        .close-player {
-            background: rgba(255,255,255,0.2); border: none; color: #fff;
-            padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 11px;
-        }
-
-        .now-playing-title { font-size: 13px; color: #fff; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px;}
     </style>
 </head>
 <body>
@@ -457,6 +436,9 @@
                     <button class="icon-btn" onclick="handleLogout()">Logout</button>
                 </div>
             </div>
+            <div class="search-box">
+                <input type="text" id="userSearchInput" class="search-input" placeholder="🔍 Search shows..." oninput="filterUserShows(this.value)">
+            </div>
             <div class="feed-container">
                 <div class="section-title">Available Shows</div>
                 <div id="showsGridContainer"></div>
@@ -470,6 +452,9 @@
                 <span id="navShowTitleHeader" style="font-size:12px; font-weight:bold; color:#fff;">SHOW</span>
                 <div style="width:40px;"></div>
             </div>
+            <div class="search-box">
+                <input type="text" id="userEpSearchInput" class="search-input" placeholder="🔍 Search episodes..." oninput="filterUserEpisodes(this.value)">
+            </div>
             <div class="feed-container">
                 <div id="detailEpisodesContainer"></div>
             </div>
@@ -478,7 +463,7 @@
         <!-- ADMIN PANEL HOME -->
         <div id="adminScreen" class="screen admin-screen">
             <div class="admin-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #222; padding-bottom:10px;">
-                <h2 style="font-size:16px; color:#ff0000;">Admin Dashboard (Cloud Live)</h2>
+                <h2 style="font-size:16px; color:#ff0000;">Admin Dashboard (Multi-Quality)</h2>
                 <div style="display:flex; gap:6px;">
                     <button class="icon-btn" onclick="switchScreen('homeScreen')">Home</button>
                     <button class="icon-btn" onclick="handleLogout()">Logout</button>
@@ -486,7 +471,10 @@
             </div>
 
             <button class="btn-full" style="margin-bottom:15px;" onclick="openAddShowPage()">+ Add New Show</button>
-            <div class="section-title">All Shows (Click to manage episodes)</div>
+            <div class="search-box" style="padding:0 0 15px 0; background:transparent;">
+                <input type="text" id="adminSearchInput" class="search-input" placeholder="🔍 Search shows to manage..." oninput="filterAdminShows(this.value)">
+            </div>
+            <div class="section-title">All Shows</div>
             <div id="adminShowsList"></div>
         </div>
 
@@ -497,9 +485,9 @@
                 <span style="font-size:13px; font-weight:bold; color:#ff0000;">Add New Show</span>
                 <div style="width:40px;"></div>
             </div>
-            <div class="form-group"><label>Show Name</label><input type="text" id="newShowName" placeholder="e.g. Rajgad"></div>
-            <div class="form-group"><label>Description</label><textarea id="newShowDesc" rows="3" placeholder="Overview..."></textarea></div>
-            <div class="form-group"><label>Banner Image (From Gallery)</label><input type="file" id="newShowImgFile" accept="image/*"></div>
+            <div class="input-group"><label>Show Name</label><input type="text" id="newShowName" placeholder="e.g. Rajgad"></div>
+            <div class="input-group"><label>Description</label><textarea id="newShowDesc" rows="3" placeholder="Overview..."></textarea></div>
+            <div class="input-group"><label>Banner Image (From Gallery)</label><input type="file" id="newShowImgFile" accept="image/*"></div>
             <button class="btn-full" onclick="addNewShow()">Save to Cloud</button>
         </div>
 
@@ -508,7 +496,13 @@
             <div class="back-nav-bar" style="margin:-20px -20px 20px -20px;">
                 <button class="back-btn" onclick="closeAdminShowEpisodes()">‹ Back</button>
                 <span id="adminShowPageTitle" style="font-size:13px; font-weight:bold; color:#ff0000;">Show Episodes</span>
-                <button class="icon-btn" style="background:#ff0000; color:#fff; font-weight:bold;" onclick="openAddEpisodePage()">+ Add Episode</button>
+                <div style="display:flex; gap:6px;">
+                    <button class="icon-btn" style="background:#ff0000; color:#fff; font-weight:bold;" onclick="openAddEpisodePage()">+ Add</button>
+                    <button class="icon-btn" style="background:#8b0000; color:#fff;" onclick="deleteCurrentShow()">Delete Show</button>
+                </div>
+            </div>
+            <div class="search-box" style="padding:10px 0; background:transparent;">
+                <input type="text" id="adminEpSearchInput" class="search-input" placeholder="🔍 Search episodes..." oninput="filterAdminEpisodes(this.value)">
             </div>
             <div id="adminEpisodesFeedContainer"></div>
         </div>
@@ -522,32 +516,34 @@
             </div>
             <input type="hidden" id="editingShowKey">
             <input type="hidden" id="editingEpIdx">
-            <div class="form-group"><label>Episode Title</label><input type="text" id="epFormTitle" placeholder="e.g. EPISODE 1"></div>
-            <div class="form-group"><label>Description</label><textarea id="epFormDesc" rows="2" placeholder="Description..."></textarea></div>
-            <div class="form-group"><label>Duration</label><input type="text" id="epFormDuration" value="15:00"></div>
-            <div class="form-group"><label>Video Link (.mp4 / Archive / YouTube)</label><input type="text" id="epFormVideo" placeholder="Paste link here"></div>
-            <div class="form-group"><label>Change Thumbnail (Optional)</label><input type="file" id="epFormThumbFile" accept="image/*"></div>
+            
+            <div class="input-group"><label>Episode Title</label><input type="text" id="epFormTitle" placeholder="e.g. EPISODE 1"></div>
+            <div class="input-group"><label>Description</label><textarea id="epFormDesc" rows="2" placeholder="Description..."></textarea></div>
+            <div class="input-group"><label>Duration</label><input type="text" id="epFormDuration" value="15:00"></div>
+            
+            <hr style="border:0; border-top:1px solid #333; margin:15px 0;">
+            <p style="font-size:12px; color:#ff0000; margin-bottom:10px; font-weight:bold;">Video Links per Quality (Optional)</p>
+            
+            <div class="input-group"><label>1080p Link</label><input type="text" id="epForm1080" placeholder="Paste 1080p link"></div>
+            <div class="input-group"><label>720p Link</label><input type="text" id="epForm720" placeholder="Paste 720p link"></div>
+            <div class="input-group"><label>480p Link</label><input type="text" id="epForm480" placeholder="Paste 480p link"></div>
+            <div class="input-group"><label>360p Link</label><input type="text" id="epForm360" placeholder="Paste 360p link"></div>
+
+            <div class="input-group" style="margin-top:10px;"><label>Change Thumbnail (Optional)</label><input type="file" id="epFormThumbFile" accept="image/*"></div>
             <button class="btn-full" onclick="saveEpisodeData()">Save to Cloud</button>
             <button class="btn-full" id="deleteEpBtn" style="background:#8b0000; margin-top:10px;" onclick="deleteCurrentEpisode()">Delete Episode</button>
         </div>
 
     </div>
 
-    <!-- SECURE VIDEO PLAYER MODAL -->
+    <!-- CLEAN MULTI-QUALITY VIDEO PLAYER MODAL -->
     <div class="video-modal" id="videoModal" oncontextmenu="return false;">
-        <div class="player-toolbar">
-            <div class="now-playing-title" id="playerTitle">Now Playing</div>
-            <button class="close-player" onclick="closePlayer()">✕ Close</button>
-        </div>
         <div class="video-wrapper" id="playerContainer"></div>
         <div class="player-bottom-bar">
             <div style="display:flex; align-items:center; gap:6px;">
                 <label style="font-size:11px; color:#aaa;">Quality:</label>
-                <select class="quality-selector" id="qualitySelect" onchange="changeVideoQuality(this.value)">
-                    <option value="1080">1080p (HD)</option>
-                    <option value="720">720p</option>
-                    <option value="480">480p (Saver)</option>
-                    <option value="360">360p (Low)</option>
+                <select class="quality-selector" id="qualitySelect" onchange="switchQuality(this.value)">
+                    <!-- Dynamically populated options -->
                 </select>
             </div>
         </div>
@@ -564,6 +560,8 @@
         let showsData = {};
         let currentUser = localStorage.getItem('doradoraUser') || null;
         let currentActiveShowKey = null;
+        let currentEpisodeData = null; 
+        let currentPlayerElement = null;
 
         window.onload = function() {
             rtdb.ref('shows').on('value', (snapshot) => {
@@ -578,6 +576,12 @@
             } else {
                 switchScreen('loginScreen');
             }
+
+            window.addEventListener('popstate', function(event) {
+                if (document.getElementById('videoModal').classList.contains('active')) {
+                    closePlayer();
+                }
+            });
         };
 
         function switchScreen(screenId) {
@@ -613,7 +617,8 @@
             switchScreen('loginScreen');
         }
 
-        function renderUserShowsGrid() {
+        // USER SHOWS & SEARCH
+        function renderUserShowsGrid(filterQuery = '') {
             const container = document.getElementById('showsGridContainer');
             container.innerHTML = '';
             
@@ -623,8 +628,13 @@
                 return;
             }
 
+            let matched = 0;
             keys.forEach(key => {
                 const show = showsData[key];
+                if (filterQuery && !show.name.toLowerCase().includes(filterQuery.toLowerCase()) && !show.desc.toLowerCase().includes(filterQuery.toLowerCase())) {
+                    return;
+                }
+                matched++;
                 container.innerHTML += `
                     <div class="show-grid-card" onclick="openUserShowEpisodes('${key}')">
                         <img src="${show.heroImg}" class="show-grid-img" alt="${show.name}">
@@ -635,9 +645,22 @@
                     </div>
                 `;
             });
+            if(matched === 0) container.innerHTML = '<p style="color:#777; font-size:12px;">No shows found matching search.</p>';
         }
 
+        function filterUserShows(query) {
+            renderUserShowsGrid(query);
+        }
+
+        let activeDetailShowKey = null;
         function openUserShowEpisodes(showKey) {
+            activeDetailShowKey = showKey;
+            document.getElementById('userEpSearchInput').value = '';
+            renderUserEpisodesFeed(showKey, '');
+            switchScreen('detailScreen');
+        }
+
+        function renderUserEpisodesFeed(showKey, filterQuery = '') {
             const show = showsData[showKey];
             document.getElementById('navShowTitleHeader').innerText = show.name;
             const container = document.getElementById('detailEpisodesContainer');
@@ -646,28 +669,39 @@
             const eps = show.episodes || [];
             if(eps.length === 0) {
                 container.innerHTML = '<p style="color:#777; font-size:12px;">No episodes available.</p>';
-            } else {
-                eps.forEach(ep => {
-                    container.innerHTML += `
-                        <div class="yt-card" onclick="playEpisode('${ep.title}', '${ep.video}')">
-                            <div class="yt-thumb-box">
-                                <img src="${ep.thumb || show.heroImg}" class="yt-thumb" alt="thumb">
-                                <div class="yt-duration">${ep.duration}</div>
-                            </div>
-                            <div class="yt-details">
-                                <div class="yt-meta">
-                                    <h3>${ep.title}</h3>
-                                    <p>${ep.desc}</p>
-                                </div>
+                return;
+            }
+
+            let matched = 0;
+            eps.forEach((ep, epIdx) => {
+                if (filterQuery && !ep.title.toLowerCase().includes(filterQuery.toLowerCase()) && !ep.desc.toLowerCase().includes(filterQuery.toLowerCase())) {
+                    return;
+                }
+                matched++;
+                container.innerHTML += `
+                    <div class="yt-card" onclick="openPlayerModal('${showKey}', ${epIdx})">
+                        <div class="yt-thumb-box">
+                            <img src="${ep.thumb || show.heroImg}" class="yt-thumb" alt="thumb">
+                            <div class="yt-duration">${ep.duration}</div>
+                        </div>
+                        <div class="yt-details">
+                            <div class="yt-meta">
+                                <h3>${ep.title}</h3>
+                                <p>${ep.desc}</p>
                             </div>
                         </div>
-                    `;
-                });
-            }
-            switchScreen('detailScreen');
+                    </div>
+                `;
+            });
+            if(matched === 0) container.innerHTML = '<p style="color:#777; font-size:12px;">No episodes found matching search.</p>';
         }
 
-        function renderAdminShowsList() {
+        function filterUserEpisodes(query) {
+            if(activeDetailShowKey) renderUserEpisodesFeed(activeDetailShowKey, query);
+        }
+
+        // ADMIN SHOWS, EPISODES & DELETE / SEARCH
+        function renderAdminShowsList(filterQuery = '') {
             const container = document.getElementById('adminShowsList');
             container.innerHTML = '';
             
@@ -677,16 +711,27 @@
                 return;
             }
 
+            let matched = 0;
             keys.forEach(key => {
                 const show = showsData[key];
+                if (filterQuery && !show.name.toLowerCase().includes(filterQuery.toLowerCase())) return;
+                matched++;
                 const epCount = show.episodes ? show.episodes.length : 0;
                 container.innerHTML += `
-                    <div class="admin-show-row" onclick="openAdminShowEpisodes('${key}')">
-                        <span><b>${show.name}</b> (${epCount} eps)</span>
-                        <span style="color:#aaa; font-size:11px;">Manage ›</span>
+                    <div class="admin-show-row">
+                        <span onclick="openAdminShowEpisodes('${key}')" style="cursor:pointer; flex:1;"><b>${show.name}</b> (${epCount} eps)</span>
+                        <div style="display:flex; gap:6px;">
+                            <button class="icon-btn" onclick="openAdminShowEpisodes('${key}')">Manage</button>
+                            <button class="icon-btn" style="background:#8b0000;" onclick="deleteSpecificShow('${key}')">Delete</button>
+                        </div>
                     </div>
                 `;
             });
+            if(matched === 0) container.innerHTML = '<p style="color:#777; font-size:12px;">No shows matched.</p>';
+        }
+
+        function filterAdminShows(query) {
+            renderAdminShowsList(query);
         }
 
         function openAddShowPage() {
@@ -747,7 +792,7 @@
                 desc: desc || 'No description.',
                 heroImg,
                 episodes: [
-                    { title: "EPISODE 1", desc: "Pilot episode", thumb: heroImg, video: "https://www.w3schools.com/html/mov_bbb.mp4", duration: "10:00" }
+                    { title: "EPISODE 1", desc: "Pilot episode", thumb: heroImg, v1080: "https://www.w3schools.com/html/mov_bbb.mp4", duration: "10:00" }
                 ]
             }, (error) => {
                 if (error) {
@@ -759,11 +804,27 @@
             });
         }
 
+        function deleteSpecificShow(showKey) {
+            if(confirm("Are you sure you want to delete this show entirely?")) {
+                rtdb.ref('shows/' + showKey).remove((error) => {
+                    if(!error) {
+                        alert("Show deleted successfully!");
+                    }
+                });
+            }
+        }
+
+        function deleteCurrentShow() {
+            if(currentActiveShowKey) {
+                deleteSpecificShow(currentActiveShowKey);
+                closeAdminShowEpisodes();
+            }
+        }
+
         function openAdminShowEpisodes(showKey) {
             currentActiveShowKey = showKey;
-            const show = showsData[showKey];
-            document.getElementById('adminShowPageTitle').innerText = show.name;
-            renderAdminEpisodesFeed(show);
+            document.getElementById('adminEpSearchInput').value = '';
+            renderAdminEpisodesFeed(showKey, '');
             document.getElementById('adminShowEpisodesPage').classList.add('active');
         }
 
@@ -771,19 +832,26 @@
             document.getElementById('adminShowEpisodesPage').classList.remove('active');
         }
 
-        function renderAdminEpisodesFeed(show) {
+        function renderAdminEpisodesFeed(showKey, filterQuery = '') {
+            const show = showsData[showKey];
+            document.getElementById('adminShowPageTitle').innerText = show.name;
             const container = document.getElementById('adminEpisodesFeedContainer');
             container.innerHTML = '';
+            
             const eps = show.episodes || [];
             if(eps.length === 0) {
                 container.innerHTML = '<p style="color:#777; font-size:12px;">No episodes found.</p>';
                 return;
             }
+
+            let matched = 0;
             eps.forEach((ep, epIdx) => {
+                if (filterQuery && !ep.title.toLowerCase().includes(filterQuery.toLowerCase())) return;
+                matched++;
                 container.innerHTML += `
                     <div class="yt-card">
-                        <button class="edit-ep-btn" onclick="openEditEpisodePage('${currentActiveShowKey}', ${epIdx})">✏️ Edit</button>
-                        <div class="yt-thumb-box" onclick="playEpisode('${ep.title}', '${ep.video}')">
+                        <button class="edit-ep-btn" onclick="openEditEpisodePage('${showKey}', ${epIdx})">✏️ Edit</button>
+                        <div class="yt-thumb-box" onclick="openPlayerModal('${showKey}', ${epIdx})">
                             <img src="${ep.thumb || show.heroImg}" class="yt-thumb" alt="thumb">
                             <div class="yt-duration">${ep.duration}</div>
                         </div>
@@ -796,6 +864,11 @@
                     </div>
                 `;
             });
+            if(matched === 0) container.innerHTML = '<p style="color:#777; font-size:12px;">No episodes matched search.</p>';
+        }
+
+        function filterAdminEpisodes(query) {
+            if(currentActiveShowKey) renderAdminEpisodesFeed(currentActiveShowKey, query);
         }
 
         function openAddEpisodePage() {
@@ -805,7 +878,10 @@
             document.getElementById('epFormTitle').value = "";
             document.getElementById('epFormDesc').value = "";
             document.getElementById('epFormDuration').value = "15:00";
-            document.getElementById('epFormVideo').value = "";
+            document.getElementById('epForm1080').value = "";
+            document.getElementById('epForm720').value = "";
+            document.getElementById('epForm480').value = "";
+            document.getElementById('epForm360').value = "";
             document.getElementById('epFormThumbFile').value = "";
             document.getElementById('deleteEpBtn').style.display = "none";
             document.getElementById('editEpisodePage').classList.add('active');
@@ -819,7 +895,10 @@
             document.getElementById('epFormTitle').value = ep.title;
             document.getElementById('epFormDesc').value = ep.desc || '';
             document.getElementById('epFormDuration').value = ep.duration || '15:00';
-            document.getElementById('epFormVideo').value = ep.video;
+            document.getElementById('epForm1080').value = ep.v1080 || '';
+            document.getElementById('epForm720').value = ep.v720 || '';
+            document.getElementById('epForm480').value = ep.v480 || '';
+            document.getElementById('epForm360').value = ep.v360 || '';
             document.getElementById('epFormThumbFile').value = "";
             document.getElementById('deleteEpBtn').style.display = "block";
             document.getElementById('editEpisodePage').classList.add('active');
@@ -835,10 +914,17 @@
             const title = document.getElementById('epFormTitle').value.trim();
             const desc = document.getElementById('epFormDesc').value.trim();
             const duration = document.getElementById('epFormDuration').value.trim();
-            const video = document.getElementById('epFormVideo').value.trim();
+            
+            const v1080 = document.getElementById('epForm1080').value.trim();
+            const v720 = document.getElementById('epForm720').value.trim();
+            const v480 = document.getElementById('epForm480').value.trim();
+            const v360 = document.getElementById('epForm360').value.trim();
             const fileInput = document.getElementById('epFormThumbFile');
 
-            if(!title || !video) { alert('Title and video link are required.'); return; }
+            if(!title || (!v1080 && !v720 && !v480 && !v360)) { 
+                alert('Title and at least one video link are required.'); 
+                return; 
+            }
 
             const show = showsData[showKey];
             let eps = show.episodes || [];
@@ -848,7 +934,7 @@
                     title,
                     desc: desc || 'Description',
                     duration: duration || '15:00',
-                    video,
+                    v1080, v720, v480, v360,
                     thumb: thumbUrl || (epIdx !== "" ? eps[epIdx].thumb : show.heroImg)
                 };
 
@@ -863,7 +949,7 @@
                         alert("Error saving: " + error.message);
                     } else {
                         closeEditEpisodePage();
-                        openAdminShowEpisodes(showKey);
+                        if(currentActiveShowKey) openAdminShowEpisodes(showKey);
                         alert('Episode saved to Cloud successfully!');
                     }
                 });
@@ -894,67 +980,84 @@
             }
         }
 
-        // SECURE VIDEO PLAYER CONTROLS
-        const videoModal = document.getElementById('videoModal');
+        // PLAYER WITH MULTI-QUALITY SELECTION SUPPORT & BACK BUTTON SYNC
         const playerContainer = document.getElementById('playerContainer');
-        const playerTitle = document.getElementById('playerTitle');
-        let activeVideoElement = null;
+        const videoModal = document.getElementById('videoModal');
 
-        function playEpisode(title, videoUrl) {
-            playerTitle.innerText = title;
-            playerContainer.innerHTML = ''; 
-            document.getElementById('qualitySelect').value = "1080";
+        function openPlayerModal(showKey, epIdx) {
+            const ep = showsData[showKey].episodes[epIdx];
+            currentEpisodeData = ep;
+            playerContainer.innerHTML = '';
 
-            if (videoUrl.includes('youtube.com/embed/') || videoUrl.includes('youtu.be')) {
-                let embedUrl = videoUrl;
-                if(videoUrl.includes('youtu.be/')) {
-                    const id = videoUrl.split('youtu.be/')[1].split('?')[0];
-                    embedUrl = `https://www.youtube.com/embed/${id}?autoplay=1`;
-                }
-                const iframe = document.createElement('iframe');
-                iframe.src = embedUrl;
-                iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
-                iframe.allowFullscreen = true;
-                playerContainer.appendChild(iframe);
-                activeVideoElement = null;
-            } else {
-                const video = document.createElement('video');
-                video.controls = true;
-                video.autoplay = true;
-                video.playsInline = true;
-                video.disablePictureInPicture = true;
-                // Built-in native controls already include a fullscreen icon in the bottom right corner
-                video.setAttribute('controlsList', 'nodownload noremoteplayback');
-                
-                video.addEventListener('contextmenu', e => e.preventDefault());
-                
-                video.src = videoUrl;
-                playerContainer.appendChild(video);
-                activeVideoElement = video;
+            const qualitySelect = document.getElementById('qualitySelect');
+            qualitySelect.innerHTML = '';
+
+            let availableQualities = [];
+            if (ep.v1080) availableQualities.push({ label: '1080p (HD)', url: ep.v1080 });
+            if (ep.v720) availableQualities.push({ label: '720p', url: ep.v720 });
+            if (ep.v480) availableQualities.push({ label: '480p', url: ep.v480 });
+            if (ep.v360) availableQualities.push({ label: '360p (Low)', url: ep.v360 });
+
+            if (availableQualities.length === 0 && ep.video) {
+                availableQualities.push({ label: 'Auto / HD', url: ep.video });
             }
 
+            availableQualities.forEach((q, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.innerText = q.label;
+                qualitySelect.appendChild(opt);
+            });
+
+            if (availableQualities.length > 0) {
+                playVideoUrl(availableQualities[0].url, 0);
+            }
+
+            history.pushState({ playerOpen: true }, "");
             videoModal.classList.add('active');
+        }
+
+        function playVideoUrl(url, startTime = 0) {
+            playerContainer.innerHTML = '';
+            
+            const video = document.createElement('video');
+            video.controls = true;
+            video.autoplay = true;
+            video.playsInline = true;
+            video.disablePictureInPicture = true;
+            video.setAttribute('controlsList', 'nodownload noremoteplayback');
+            video.addEventListener('contextmenu', e => e.preventDefault());
+            
+            video.src = url;
+            if (startTime > 0) {
+                video.currentTime = startTime;
+            }
+            playerContainer.appendChild(video);
+            currentPlayerElement = video;
+        }
+
+        function switchQuality(selectedIdx) {
+            if (!currentEpisodeData) return;
+            
+            let availableQualities = [];
+            if (currentEpisodeData.v1080) availableQualities.push(currentEpisodeData.v1080);
+            if (currentEpisodeData.v720) availableQualities.push(currentEpisodeData.v720);
+            if (currentEpisodeData.v480) availableQualities.push(currentEpisodeData.v480);
+            if (currentEpisodeData.v360) availableQualities.push(currentEpisodeData.v360);
+            if (availableQualities.length === 0 && currentEpisodeData.video) availableQualities.push(currentEpisodeData.video);
+
+            const targetUrl = availableQualities[selectedIdx];
+            if (targetUrl && currentPlayerElement) {
+                const currentTime = currentPlayerElement.currentTime; 
+                playVideoUrl(targetUrl, currentTime); 
+            }
         }
 
         function closePlayer() {
             playerContainer.innerHTML = ''; 
-            activeVideoElement = null;
+            currentPlayerElement = null;
             videoModal.classList.remove('active');
             if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); }
-        }
-
-        function changeVideoQuality(quality) {
-            if(activeVideoElement) {
-                if(quality === "360") {
-                    activeVideoElement.style.transform = "scale(0.6)";
-                } else if(quality === "480") {
-                    activeVideoElement.style.transform = "scale(0.75)";
-                } else if(quality === "720") {
-                    activeVideoElement.style.transform = "scale(0.9)";
-                } else {
-                    activeVideoElement.style.transform = "scale(1)";
-                }
-            }
         }
     </script>
 </body>
