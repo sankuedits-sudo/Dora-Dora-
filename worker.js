@@ -1,115 +1,259 @@
-const TG = "https://api.telegram.org";
+const TG_API = "https://api.telegram.org";
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // Home
+    // =========================
+    // HOME
+    // =========================
     if (url.pathname === "/") {
       return new Response("Lecture Bot API is running! 🚀");
     }
 
-    // Telegram webhook receives videos
-    if (url.pathname === "/webhook" && request.method === "POST") {
+    // =========================
+    // TELEGRAM WEBHOOK
+    // =========================
+    if (
+      url.pathname === "/webhook" &&
+      request.method === "POST"
+    ) {
+      // Verify Telegram secret
       const secret = request.headers.get(
         "X-Telegram-Bot-Api-Secret-Token"
       );
 
       if (secret !== env.WEBHOOK_SECRET) {
-        return new Response("Unauthorized", { status: 401 });
+        return new Response("Unauthorized", {
+          status: 401
+        });
       }
 
       const update = await request.json();
-      const message = update.message || update.channel_post;
 
-      if (!message) return new Response("OK");
+      // Telegram message or channel post
+      const message =
+        update.message ||
+        update.channel_post;
 
-      const media = message.video || message.document;
-
-      if (media) {
-        const title =
-          message.caption ||
-          media.file_name ||
-          "Untitled Lecture";
-
-        await env.DB.prepare(`
-          INSERT INTO lectures
-          (file_id, title, caption, created_at)
-          VALUES (?, ?, ?, ?)
-        `)
-          .bind(
-            media.file_id,
-            title,
-            message.caption || "",
-            new Date().toISOString()
-          )
-          .run();
+      if (!message) {
+        return new Response("OK");
       }
+
+      // Get video or document
+      const media =
+        message.video ||
+        message.document;
+
+      if (!media) {
+        return new Response("OK");
+      }
+
+      // Title priority:
+      // Caption → filename → fallback
+      const title =
+        message.caption ||
+        media.file_name ||
+        "Untitled Lecture";
+
+      const caption =
+        message.caption ||
+        "";
+
+      // Save in D1
+      await env.DB.prepare(`
+        INSERT INTO lectures (
+          file_id,
+          title,
+          caption,
+          created_at
+        )
+        VALUES (?, ?, ?, ?)
+      `)
+        .bind(
+          media.file_id,
+          title,
+          caption,
+          new Date().toISOString()
+        )
+        .run();
 
       return new Response("OK");
     }
 
-    // Get lecture list
+    // =========================
+    // GET ALL LECTURES
+    // =========================
     if (url.pathname === "/lectures") {
       const result = await env.DB.prepare(`
-        SELECT id, title, caption, created_at
+        SELECT
+          id,
+          title,
+          caption,
+          created_at
         FROM lectures
         ORDER BY id DESC
       `).all();
 
-      return Response.json(result.results, {
-        headers: {
-          "Access-Control-Allow-Origin": "*"
+      return new Response(
+        JSON.stringify(result.results),
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+          }
         }
-      });
+      );
     }
 
-    // Stream an authorized Telegram file
-    if (url.pathname.startsWith("/stream/")) {
+    // =========================
+    // STREAM VIDEO
+    // =========================
+    if (
+      url.pathname.startsWith("/stream/") &&
+      request.method === "GET"
+    ) {
       const id = url.pathname.split("/").pop();
 
+      // Get lecture from database
       const lecture = await env.DB.prepare(`
-        SELECT file_id FROM lectures WHERE id = ?
-      `).bind(id).first();
+        SELECT file_id, title
+        FROM lectures
+        WHERE id = ?
+      `)
+        .bind(id)
+        .first();
 
       if (!lecture) {
-        return new Response("Lecture not found", { status: 404 });
+        return new Response(
+          "Lecture not found",
+          { status: 404 }
+        );
       }
 
-      // Get Telegram file path
-      const fileInfo = await fetch(
-        `${TG}/bot${env.BOT_TOKEN}/getFile?file_id=${encodeURIComponent(lecture.file_id)}`
+      // =========================
+      // TELEGRAM getFile
+      // =========================
+      const getFileUrl =
+        `${TG_API}/bot${env.BOT_TOKEN}/getFile?file_id=` +
+        encodeURIComponent(lecture.file_id);
+
+      const fileResponse = await fetch(getFileUrl);
+
+      const fileInfo =
+        await fileResponse.json();
+
+      // Show actual Telegram error
+      if (!fileInfo.ok) {
+        return new Response(
+          JSON.stringify({
+            error: "Telegram getFile failed",
+            telegram_response: fileInfo
+          }),
+          {
+            status: 502,
+            headers: {
+              "Content-Type": "application/json"
+            }
+          }
+        );
+      }
+
+      const filePath =
+        fileInfo.result.file_path;
+
+      // =========================
+      // DOWNLOAD / STREAM FILE
+      // =========================
+      const telegramFileUrl =
+        `${TG_API}/file/bot${env.BOT_TOKEN}/${filePath}`;
+
+      // Forward Range header for video seeking
+      const headers = new Headers();
+
+      const range =
+        request.headers.get("Range");
+
+      if (range) {
+        headers.set("Range", range);
+      }
+
+      const mediaResponse =
+        await fetch(
+          telegramFileUrl,
+          {
+            headers
+          }
+        );
+
+      if (!mediaResponse.ok && mediaResponse.status !== 206) {
+        return new Response(
+          `Telegram media request failed: ${mediaResponse.status}`,
+          {
+            status: 502
+          }
+        );
+      }
+
+      // Copy important headers
+      const responseHeaders =
+        new Headers();
+
+      const contentType =
+        mediaResponse.headers.get("Content-Type");
+
+      const contentLength =
+        mediaResponse.headers.get("Content-Length");
+
+      const contentRange =
+        mediaResponse.headers.get("Content-Range");
+
+      if (contentType) {
+        responseHeaders.set(
+          "Content-Type",
+          contentType
+        );
+      }
+
+      if (contentLength) {
+        responseHeaders.set(
+          "Content-Length",
+          contentLength
+        );
+      }
+
+      if (contentRange) {
+        responseHeaders.set(
+          "Content-Range",
+          contentRange
+        );
+      }
+
+      responseHeaders.set(
+        "Accept-Ranges",
+        "bytes"
       );
 
-      const info = await fileInfo.json();
+      responseHeaders.set(
+        "Access-Control-Allow-Origin",
+        "*"
+      );
 
-      if (!info.ok) {
-        return new Response("Could not access Telegram file", {
-          status: 502
-        });
-      }
-
-      const filePath = info.result.file_path;
-
-      // Fetch media from Telegram and proxy it
-      const telegramVideo = await fetch(
-        `https://api.telegram.org/file/bot${env.BOT_TOKEN}/${filePath}`,
+      return new Response(
+        mediaResponse.body,
         {
-          headers: request.headers
+          status: mediaResponse.status,
+          headers: responseHeaders
         }
       );
-
-      const headers = new Headers(telegramVideo.headers);
-
-      headers.set("Access-Control-Allow-Origin", "*");
-      headers.set("Accept-Ranges", "bytes");
-
-      return new Response(telegramVideo.body, {
-        status: telegramVideo.status,
-        headers
-      });
     }
 
-    return new Response("Not Found", { status: 404 });
+    // =========================
+    // NOT FOUND
+    // =========================
+    return new Response(
+      "Not Found",
+      { status: 404 }
+    );
   }
 };
